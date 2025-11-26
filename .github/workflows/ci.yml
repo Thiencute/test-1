@@ -23,10 +23,10 @@ jobs:
         with:
           java-version: '11'
           distribution: 'temurin'
-          cache: 'maven'   # ✅ bật cache Maven
+          cache: 'maven'
 
       - name: Build with Maven (fast)
-        run: mvn clean package -DskipTests   # ✅ skip tests để build nhanh
+        run: mvn clean package -DskipTests
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -35,9 +35,24 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # ✅ Thêm metadata-action để tạo thông tin tag và labels
+      - name: Set up Docker metadata
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/helloworld
+          tags: |
+            type=ref,event=branch
+            type=sha
+          labels: |
+            org.opencontainers.image.source=${{ github.repository_url }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/helloworld:latest
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
